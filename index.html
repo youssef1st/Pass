@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Huawei EMUI Zoom-out Unlock Transition</title>
+
+  <!-- إعدادات لجعل الصفحة تفتح كتطبيق بدون شريط متصفح -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Manifest لتحديد طريقة فتح التطبيق (Standalone) -->
+  <link rel="manifest" href="data:application/manifest+json;utf8,{
+    %22name%22:%20%22Lockscreen%22,
+    %22short_name%22:%20%22Lockscreen%22,
+    %22start_url%22:%20%22.%22,
+    %22display%22:%20%22standalone%22,
+    %22background_color%22:%20%22%23000000%22,
+    %22theme_color%22:%20%22%23000000%22
+  }">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    /* حاوية الشاشة الكاملة */
+    .phone {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background-color: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* الشاشات وقواعد الانتقال */
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.42s ease,
+                  filter 0.48s ease;
+      will-change: transform, opacity, filter;
+    }
+
+    /* 1. شاشة القفل */
+    #lock-screen {
+      background: url('https://i.pinimg.com/736x/3f/ca/ad/3fcaad74608e0507a7d14c2a999f7317.jpg') center/cover no-repeat #111;
+      color: #ffffff;
+      z-index: 20;
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0px);
+    }
+
+    #lock-screen.unlocking {
+      transform: scale(1.15);
+      filter: blur(16px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* 2. الشاشة الرئيسية */
+    #home-screen {
+      background-color: #000;
+      z-index: 10;
+      transform: scale(0.90);
+      opacity: 0;
+      filter: blur(8px);
+    }
+
+    #home-screen.active {
+      transform: scale(1);
+      opacity: 1;
+      filter: blur(0px);
+    }
+
+    /* محتوى شاشة القفل */
+    .lock-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      padding-bottom: 40px;
+    }
+
+    .pin-title {
+      font-size: 20px;
+      font-weight: 400;
+      margin-bottom: 12px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .emergency-pin-display {
+      height: 20px;
+      font-size: 15px;
+      color: #fffb00;
+      font-weight: bold;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+      margin-bottom: 12px;
+    }
+
+    .pin-dots {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 40px;
+      direction: ltr;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border: 1.5px solid rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      background-color: transparent;
+      transition: background-color 0.12s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    .dot.filled {
+      background-color: #ffffff;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px 0;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      direction: ltr;
+      padding: 0 20px;
+    }
+
+    .key {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      justify-self: center;
+    }
+
+    .key:active {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .key .num {
+      font-size: 32px;
+      font-weight: 400;
+      line-height: 1;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+    }
+
+    .key .sub {
+      font-size: 9px;
+      letter-spacing: 1px;
+      opacity: 0.95;
+      margin-top: 3px;
+      font-weight: 500;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+
+    .action-text {
+      font-size: 14px;
+      font-weight: 400;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .home-bg {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .yt-kids-click-area {
+      position: absolute;
+      bottom: 15%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 80px;
+      cursor: pointer;
+      z-index: 25;
+    }
+
+    .bottom-back-bar {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 130px;
+      height: 20px;
+      cursor: pointer;
+      z-index: 25;
+    }
+  </style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- 1. شاشة القفل -->
+  <div id="lock-screen" class="screen">
+    
+    <div class="lock-content">
+      <div class="pin-title">أدخل رقم الدخول</div>
+      
+      <div class="emergency-pin-display" id="pin-emergency-text"></div>
+
+      <div class="pin-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="keypad">
+        <div class="key" onclick="pressNum('1')"><span class="num">1</span></div>
+        <div class="key" onclick="pressNum('2')"><span class="num">2</span><span class="sub">ABC</span></div>
+        <div class="key" onclick="pressNum('3')"><span class="num">3</span><span class="sub">DEF</span></div>
+        
+        <div class="key" onclick="pressNum('4')"><span class="num">4</span><span class="sub">GHI</span></div>
+        <div class="key" onclick="pressNum('5')"><span class="num">5</span><span class="sub">JKL</span></div>
+        <div class="key" onclick="pressNum('6')"><span class="num">6</span><span class="sub">MNO</span></div>
+        
+        <div class="key" onclick="pressNum('7')"><span class="num">7</span><span class="sub">PQRS</span></div>
+        <div class="key" onclick="pressNum('8')"><span class="num">8</span><span class="sub">TUV</span></div>
+        <div class="key" onclick="pressNum('9')"><span class="num">9</span><span class="sub">WXYZ</span></div>
+        
+        <div class="action-text" onclick="pressBack()">رجوع</div>
+        <div class="key" onclick="pressNum('0')"><span class="num">0</span></div>
+        <div class="action-text" onclick="pressEmergency()">مكالمة طوارئ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. الشاشة الرئيسية -->
+  <div id="home-screen" class="screen">
+    <img src="https://plain-eeur-prod-public.komododecks.com/202609/03/XqdKrVYqSEi5q45K6yTS/image.jpg" class="home-bg" alt="الشاشة الرئيسية">
+    <div class="yt-kids-click-area" onclick="lockPhone()"></div>
+    <div class="bottom-back-bar" onclick="lockPhone()"></div>
+  </div>
+</div>
+
+<script>
+  let enteredPin = "";
+  let lastEnteredPin = "";
+  let isEmergencyActive = false;
+
+  function updateUI() {
+    const dots = document.querySelectorAll('.dot');
+    dots.forEach((dot, idx) => {
+      if (idx < enteredPin.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    });
+
+    const display = document.getElementById('pin-emergency-text');
+    if (isEmergencyActive) {
+      const pinToShow = enteredPin || lastEnteredPin;
+      display.innerText = pinToShow ? "الرمز: " + pinToShow : "لا يوجد رمز مدخل";
+    } else {
+      display.innerText = "";
+    }
+  }
+
+  function pressNum(digit) {
+    if (enteredPin.length < 6) {
+      enteredPin += digit;
+      lastEnteredPin = enteredPin;
+      updateUI();
+      
+      if (enteredPin.length === 6) {
+        setTimeout(unlockPhone, 120);
+      }
+    }
+  }
+
+  function unlockPhone() {
+    const lockScreen = document.getElementById('lock-screen');
+    const homeScreen = document.getElementById('home-screen');
+    
+    lockScreen.classList.add('unlocking');
+    homeScreen.classList.add('active');
+
+    setTimeout(() => {
+      enteredPin = "";
+      updateUI();
+    }, 500);
+  }
+
+  function lockPhone() {
+    const lockScreen = document.getElementById('lock-screen');
+    const homeScreen = document.getElementById('home-screen');
+
+    lockScreen.classList.remove('unlocking');
+    homeScreen.classList.remove('active');
+    
+    enteredPin = "";
+    updateUI();
+  }
+
+  function pressBack() {
+    if (enteredPin.length > 0) {
+      enteredPin = enteredPin.slice(0, -1);
+      lastEnteredPin = enteredPin;
+      updateUI();
+    }
+  }
+
+  function pressEmergency() {
+    isEmergencyActive = true;
+    updateUI();
+  }
+</script>
+
+</body>
+</html>
